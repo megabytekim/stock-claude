@@ -1,0 +1,16 @@
+# plugins/vulture/utils/requirements.txt
+# Core dependencies
+pykrx>=1.0.0
+pandas>=1.5.0
+numpy>=1.20.0
+
+# HTTP and parsing
+requests>=2.25.0
+beautifulsoup4>=4.9.0
+
+# US stocks fallback
+yfinance>=0.2.0
+
+# Testing
+pytest>=7.0.0
+pytest-mock>=3.0.0
