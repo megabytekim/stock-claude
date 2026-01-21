@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "vulture",
-      "path": "plugins/vulture"
+      "source": "plugins/vulture"
     }
   ]
 }
