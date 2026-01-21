@@ -252,22 +252,18 @@ After workers complete, main context performs strategic analysis using sector kn
 # Formulate entry/exit strategy
 ```
 
-### Phase 4: Report Generation & Save (PREPEND 방식)
+### Phase 4: Report Generation & Save (PREPEND 방식 - Context 효율화)
 
 ```python
 OUTPUT_DIR = "watchlist/stocks"
 file_name = f"{company_name}_{ticker}.md"  # 예: 삼성전자_005930.md, NVIDIA_NVDA.md
 output_file = f"{OUTPUT_DIR}/{file_name}"
 
-# STEP 1: 디렉토리 확인 (폴더 생성 불필요, watchlist/stocks만 있으면 됨)
+# STEP 1: 디렉토리 확인
 mkdir -p {OUTPUT_DIR}
 
-# STEP 2: 기존 파일 확인 및 읽기
-existing_content = ""
-if file_exists(output_file):
-    existing_content = Read(output_file)
-
-# STEP 3: 새 분석 생성 (최신이 위에 오도록)
+# STEP 2: 새 분석을 임시 파일에 저장 (Write 도구 사용)
+temp_file = "/tmp/vulture_new_analysis.md"
 new_analysis = f"""
 # {company_name} ({ticker}) 분석
 
@@ -277,20 +273,26 @@ new_analysis = f"""
 
 ---
 """
+Write(temp_file, new_analysis)
 
-# STEP 4: PREPEND (새 분석을 기존 내용 앞에 추가)
-final_content = new_analysis + existing_content
-
-# STEP 5: Write (전체 내용 저장)
-Write(output_file, final_content)
+# STEP 3: Bash로 PREPEND (기존 파일을 컨텍스트에 로드하지 않음)
+# 기존 파일이 없으면 새 분석만 저장, 있으면 prepend
+Bash(f"""
+if [ -f "{output_file}" ]; then
+    cat {temp_file} {output_file} > /tmp/vulture_merged.md
+    mv /tmp/vulture_merged.md {output_file}
+else
+    mv {temp_file} {output_file}
+fi
+""")
 
 # 결과 예시:
 # watchlist/stocks/삼성전자_005930.md
 # watchlist/stocks/NVIDIA_NVDA.md
 ```
 
-**APPEND 규칙:**
-- 새 분석을 기존 내용 **앞에** 추가 (PREPEND)
+**PREPEND 규칙:**
+- Bash로 prepend하여 기존 내용을 컨텍스트에 로드하지 않음
 - 최신 분석이 항상 파일 상단에 위치
 - 기존 분석 내용 절대 삭제 금지
 
