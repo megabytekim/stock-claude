@@ -9,8 +9,6 @@ arguments:
     description: Analysis depth (quick/standard/deep)
     required: false
     default: deep
-references:
-  - 
 ---
 
 # Vulture Analysis Command
@@ -19,15 +17,15 @@ This command performs comprehensive stock analysis by **orchestrating MI/SI/TI/F
 
 ## Reference File (Golden Sample)
 
-> **IMPORTANT**: The `references` section above points to a **golden sample analysis file**.
-> When generating reports, use this file as a **format/structure reference**:
+> **TODO**: Golden sample 파일은 아직 없습니다. 추후 추가 예정.
+>
+> Golden sample이 추가되면 `references:` frontmatter에 경로를 넣고,
+> 아래 기준으로 리포트 포맷을 참조하세요:
 > - 목차 구성 및 순서
 > - 테이블 포맷 및 컬럼 구성
 > - 섹션별 내용 깊이와 톤
 > - Cross-Check Matrix 형식
 > - Executive Summary 스타일
->
-> 이 파일의 구조와 느낌을 유지하면서 새로운 종목 분석을 작성하세요.
 
 ## Architecture
 

@@ -58,7 +58,7 @@ FAIL: 모든 방법 실패
 3. **완결 연도 기준 YoY**: 누적 데이터 제외하고 완결 연도끼리 비교
 4. **확장된 재무비율**: 부채비율, 유동비율, FCF
 
-### ROE, EV/EBITDA 수집 (IMPORTANT)
+### ROE, ROA, EV/EBITDA 수집 (IMPORTANT)
 
 **FnGuide Snapshot 페이지에서 직접 가져오기** (계산하지 않음):
 
@@ -81,14 +81,18 @@ EOF
 {
     "source": "FnGuide Snapshot",
     "ticker": "005930",
-    "roe": 8.16,           # ROE (%) - 2024/12 기준
+    "roe": 9.03,           # ROE (%) - 2024/12 기준
     "roe_period": "2024/12",
+    "roa": 7.1,            # ROA (%) - 2024/12 기준
+    "roa_period": "2024/12",
     "ev_ebitda": 4.84,     # EV/EBITDA (배)
     "ev_ebitda_period": "latest"
 }
 ```
 
-**중요**: ROE는 FnGuide에서 직접 가져오므로 별도 계산 불필요
+**중요**: ROE/ROA는 FnGuide에서 직접 가져오므로 별도 계산 불필요
+- 1순위: FnGuide Snapshot (SVD_Main.asp)
+- 2순위: 직접 계산 (fallback)
 
 ---
 

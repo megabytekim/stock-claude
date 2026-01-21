@@ -384,10 +384,14 @@ def get_fnguide_financial(ticker: str, retry: int = 2) -> Optional[dict]:
             # 성장률 계산 (완결 연도 기준)
             growth = _calculate_growth(income_annual, period_labels)
 
-            # FnGuide 재무비율 페이지에서 ROE/ROA 가져오기 (우선)
-            fnguide_ratios = get_fnguide_ratios(ticker, retry=1)
+            # FnGuide에서 ROE/ROA 가져오기
+            # 1순위: SVD_Main.asp (Snapshot 페이지) - requests로 직접 가져옴
+            fnguide_ratios = get_fnguide_snapshot_ratios(ticker, retry=1)
 
-            # 재무비율 계산 (FnGuide 우선, 계산 fallback)
+            # TODO: SVD_FinanceRatio.asp는 JS 동적 로드로 requests 불가
+            # Playwright MCP 사용 시 get_fnguide_ratios() 활성화 검토
+
+            # 재무비율 계산 (FnGuide Snapshot 1순위, 직접계산 2순위 fallback)
             ratios = _calculate_ratios(income_annual, balance_annual, fnguide_ratios)
 
             # 최신 연도
@@ -776,7 +780,7 @@ def print_fi_report(ticker: str) -> None:
 
 
 def get_fnguide_snapshot_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
-    """FnGuide Snapshot 페이지(SVD_Main.asp)에서 ROE, EV/EBITDA 스크래핑
+    """FnGuide Snapshot 페이지(SVD_Main.asp)에서 ROE, ROA, EV/EBITDA 스크래핑
 
     SVD_FinanceRatio.asp는 JS 동적 로드라 requests로 안 됨.
     SVD_Main.asp는 서버사이드 렌더링이라 requests로 가능.
@@ -791,6 +795,8 @@ def get_fnguide_snapshot_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
             "ticker": "005930",
             "roe": 9.03,
             "roe_period": "2024/12",
+            "roa": 7.12,
+            "roa_period": "2024/12",
             "ev_ebitda": 8.35,
             "ev_ebitda_period": "2024/12",
         }
@@ -809,6 +815,8 @@ def get_fnguide_snapshot_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
                 "ticker": ticker,
                 "roe": None,
                 "roe_period": None,
+                "roa": None,
+                "roa_period": None,
                 "ev_ebitda": None,
                 "ev_ebitda_period": None,
             }
@@ -870,6 +878,18 @@ def get_fnguide_snapshot_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
                                 except ValueError:
                                     pass
 
+                    # ROA
+                    if result["roa"] is None and "ROA" in th_text and "%" in th_text:
+                        td_idx = latest_header_idx - first_year_header_idx
+                        if 0 <= td_idx < len(tds):
+                            val_text = tds[td_idx].get_text(strip=True)
+                            if val_text and val_text not in ["", "-"]:
+                                try:
+                                    result["roa"] = float(val_text.replace(",", ""))
+                                    result["roa_period"] = f"{latest_year}/12"
+                                except ValueError:
+                                    pass
+
                     # EV/EBITDA
                     if result["ev_ebitda"] is None and "EV/EBITDA" in th_text:
                         td_idx = latest_header_idx - first_year_header_idx
@@ -922,10 +942,10 @@ def get_fnguide_snapshot_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
                         break
 
             # 하나라도 찾았으면 반환
-            if result["roe"] is not None or result["ev_ebitda"] is not None:
+            if result["roe"] is not None or result["roa"] is not None or result["ev_ebitda"] is not None:
                 return result
 
-            raise ValueError("Failed to find ROE or EV/EBITDA")
+            raise ValueError("Failed to find ROE, ROA or EV/EBITDA")
 
         except Exception:
             if attempt < retry:
