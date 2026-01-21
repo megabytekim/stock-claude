@@ -131,6 +131,32 @@ class TestGetNaverStockInfo:
         assert result is None
 
     @patch("utils.web_scraper.requests.get")
+    def test_parses_stock_per_not_industry_per(self, mock_get):
+        """종목 PER 파싱 (동일업종 PER 아님)"""
+        mock_response = Mock()
+        mock_response.text = load_fixture("naver_sise_page.html")
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        result = get_naver_stock_info("005930")
+
+        assert result["per"] == 31.04
+        assert result["per"] != 21.33
+
+    @patch("utils.web_scraper.requests.get")
+    def test_parses_stock_pbr_not_industry_pbr(self, mock_get):
+        """종목 PBR 파싱 (동일업종 PBR 아님)"""
+        mock_response = Mock()
+        mock_response.text = load_fixture("naver_sise_page.html")
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        result = get_naver_stock_info("005930")
+
+        assert result["pbr"] == 2.15
+        assert result["pbr"] != 1.50
+
+    @patch("utils.web_scraper.requests.get")
     def test_uses_correct_url(self, mock_get):
         """올바른 URL 사용 확인"""
         mock_response = Mock()
