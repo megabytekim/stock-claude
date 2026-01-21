@@ -7,9 +7,5 @@
   },
   "keywords": ["stock", "korea", "analysis", "kospi", "kosdaq", "finance", "trading"],
   "license": "MIT",
-  "readme": "README.md",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/michael/stock-claude"
-  }
+  "repository": "https://github.com/megabytekim/stock-claude"
 }
