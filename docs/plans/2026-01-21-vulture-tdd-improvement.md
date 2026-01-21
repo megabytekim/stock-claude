@@ -1257,43 +1257,9 @@ git commit -m "test: add integration tests for agent workflows"
 
 ---
 
-## Phase 4: Plugin Structure Improvements
+## Phase 4: Final Verification
 
-### Task 10: Add plugin.json improvements
-
-**Files:**
-- Modify: `plugins/vulture/.claude-plugin/plugin.json`
-
-**Step 1: Update plugin.json with additional metadata**
-
-```json
-{
-  "name": "vulture",
-  "version": "1.0.0",
-  "description": "한국주식시장 종합 분석 - 시장, 센티먼트, 기술적, 재무 분석 에이전트 병렬 실행",
-  "author": {
-    "name": "Michael"
-  },
-  "keywords": ["stock", "korea", "analysis", "kospi", "kosdaq", "finance", "trading"],
-  "license": "MIT",
-  "readme": "README.md",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/michael/stock-claude"
-  }
-}
-```
-
-**Step 2: Commit**
-
-```bash
-git add plugins/vulture/.claude-plugin/plugin.json
-git commit -m "docs: add readme and repository fields to plugin.json"
-```
-
----
-
-### Task 11: Run full test suite and verify
+### Task 10: Run full test suite and verify
 
 **Files:**
 - None (verification only)
@@ -1335,9 +1301,8 @@ git commit -m "chore: complete TDD improvement phase"
 ### Phase 3: Integration Tests - Task 9
 - [x] Task 9: Agent workflow integration tests
 
-### Phase 4: Plugin Improvements - Tasks 10-11
-- [x] Task 10: Plugin.json improvements
-- [x] Task 11: Full test suite verification
+### Phase 4: Final Verification - Task 10
+- [x] Task 10: Full test suite verification
 
 ---
 
