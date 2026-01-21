@@ -255,9 +255,45 @@ def _calculate_growth(income_data: dict, period_labels: Optional[dict] = None) -
     return growth
 
 
-def _calculate_ratios(income_data: Optional[dict], balance_data: Optional[dict]) -> dict:
-    """재무비율 계산"""
-    ratios = {"debt_ratio": None, "current_ratio": None, "roe": None, "roa": None}
+def _calculate_ratios(
+    income_data: Optional[dict],
+    balance_data: Optional[dict],
+    fnguide_ratios: Optional[dict] = None
+) -> dict:
+    """재무비율 계산 (FnGuide 우선, 계산 fallback)
+
+    Args:
+        income_data: 손익계산서 데이터
+        balance_data: 재무상태표 데이터
+        fnguide_ratios: FnGuide 재무비율 페이지 데이터 (우선 사용)
+
+    Returns:
+        {
+            "debt_ratio": float,
+            "current_ratio": float,
+            "roe": float,
+            "roa": float,
+            "roe_source": "FnGuide" | "calculated",
+            "roa_source": "FnGuide" | "calculated"
+        }
+    """
+    ratios = {
+        "debt_ratio": None,
+        "current_ratio": None,
+        "roe": None,
+        "roa": None,
+        "roe_source": None,
+        "roa_source": None,
+    }
+
+    # 1순위: FnGuide 재무비율 페이지에서 ROE/ROA 가져오기
+    if fnguide_ratios:
+        if fnguide_ratios.get("roe") is not None:
+            ratios["roe"] = fnguide_ratios["roe"]
+            ratios["roe_source"] = "FnGuide"
+        if fnguide_ratios.get("roa") is not None:
+            ratios["roa"] = fnguide_ratios["roa"]
+            ratios["roa_source"] = "FnGuide"
 
     if not balance_data:
         return ratios
@@ -265,6 +301,7 @@ def _calculate_ratios(income_data: Optional[dict], balance_data: Optional[dict])
     latest_year = max(balance_data.keys())
     balance = balance_data[latest_year]
 
+    # 부채비율, 유동비율 계산 (항상 계산)
     tl = balance.get("total_liabilities")
     te = balance.get("total_equity")
     if tl and te and te != 0:
@@ -275,14 +312,19 @@ def _calculate_ratios(income_data: Optional[dict], balance_data: Optional[dict])
     if ca and cl and cl != 0:
         ratios["current_ratio"] = round(ca / cl * 100, 2)
 
-    if income_data and latest_year in income_data:
+    # 2순위: FnGuide 없으면 직접 계산 (fallback)
+    if ratios["roe"] is None and income_data and latest_year in income_data:
         ni = income_data[latest_year].get("net_income")
-        ta = balance.get("total_assets")
-
         if ni is not None and te and te != 0:
             ratios["roe"] = round(ni / te * 100, 2)
+            ratios["roe_source"] = "calculated"
+
+    if ratios["roa"] is None and income_data and latest_year in income_data:
+        ni = income_data[latest_year].get("net_income")
+        ta = balance.get("total_assets")
         if ni is not None and ta and ta != 0:
             ratios["roa"] = round(ni / ta * 100, 2)
+            ratios["roa_source"] = "calculated"
 
     return ratios
 
@@ -342,8 +384,11 @@ def get_fnguide_financial(ticker: str, retry: int = 2) -> Optional[dict]:
             # 성장률 계산 (완결 연도 기준)
             growth = _calculate_growth(income_annual, period_labels)
 
-            # 재무비율 계산
-            ratios = _calculate_ratios(income_annual, balance_annual)
+            # FnGuide 재무비율 페이지에서 ROE/ROA 가져오기 (우선)
+            fnguide_ratios = get_fnguide_ratios(ticker, retry=1)
+
+            # 재무비율 계산 (FnGuide 우선, 계산 fallback)
+            ratios = _calculate_ratios(income_annual, balance_annual, fnguide_ratios)
 
             # 최신 연도
             years = sorted(income_annual.keys(), reverse=True)
@@ -367,6 +412,7 @@ def get_fnguide_financial(ticker: str, retry: int = 2) -> Optional[dict]:
                 "latest": latest,
                 "growth": growth,
                 "ratios": ratios,
+                "fnguide_ratios": fnguide_ratios,
                 "period_labels": period_labels,
             }
 

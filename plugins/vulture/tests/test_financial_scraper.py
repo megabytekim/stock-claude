@@ -179,21 +179,27 @@ class TestGetFnguideFinancial:
     @patch('utils.financial_scraper.requests.get')
     def test_retries_on_failure(self, mock_get, sample_ticker_kr):
         """실패 시 재시도"""
-        mock_response = Mock()
-        mock_response.text = load_fixture("fnguide_financial_page.html")
-        mock_response.raise_for_status = Mock()
+        mock_financial_response = Mock()
+        mock_financial_response.text = load_fixture("fnguide_financial_page.html")
+        mock_financial_response.raise_for_status = Mock()
 
-        # 처음 2번 실패, 3번째 성공
+        mock_ratio_response = Mock()
+        mock_ratio_response.text = load_fixture("fnguide_ratio_page.html")
+        mock_ratio_response.raise_for_status = Mock()
+
+        # 처음 2번 실패, 3번째 성공 (financial page) + ratios page 호출 (retry=1이므로 최대 2번)
         mock_get.side_effect = [
             Exception("Network error"),
             Exception("Network error"),
-            mock_response
+            mock_financial_response,
+            mock_ratio_response,  # get_fnguide_ratios 호출
         ]
 
         result = get_fnguide_financial(sample_ticker_kr, retry=2)
 
         assert result is not None
-        assert mock_get.call_count == 3
+        # 3번 (financial page: 2 실패 + 1 성공) + 1번 (ratios page) = 4번
+        assert mock_get.call_count == 4
 
 
 class TestGetNaverFinancial:
@@ -646,3 +652,44 @@ class TestGetFnguideRatios:
         call_args = mock_get.call_args
         assert "SVD_FinanceRatio.asp" in call_args[0][0]
         assert "A048910" in call_args[0][0]
+
+
+class TestCalculateRatiosWithFnguide:
+    """_calculate_ratios 함수 테스트 (FnGuide 우선)"""
+
+    def test_uses_fnguide_roe_when_available(self):
+        """FnGuide ROE가 있으면 계산하지 않고 그대로 사용"""
+        income_data = {'2024': {'net_income': 10}}
+        balance_data = {'2024': {'total_equity': 100}}
+        fnguide_ratios = {'roe': 9.01, 'roa': 7.12}
+
+        result = _calculate_ratios(income_data, balance_data, fnguide_ratios)
+
+        # 계산값(10.0)이 아닌 FnGuide 값(9.01) 사용
+        assert result['roe'] == 9.01
+        assert result['roa'] == 7.12
+        assert result['roe_source'] == "FnGuide"
+        assert result['roa_source'] == "FnGuide"
+
+    def test_calculates_roe_when_fnguide_unavailable(self):
+        """FnGuide 없으면 직접 계산"""
+        income_data = {'2024': {'net_income': 10}}
+        balance_data = {'2024': {'total_equity': 100}}
+        fnguide_ratios = None
+
+        result = _calculate_ratios(income_data, balance_data, fnguide_ratios)
+
+        # 직접 계산: 10/100 * 100 = 10.0
+        assert result['roe'] == 10.0
+        assert result['roe_source'] == "calculated"
+
+    def test_calculates_roe_when_fnguide_roe_is_none(self):
+        """FnGuide ROE가 None이면 직접 계산"""
+        income_data = {'2024': {'net_income': 10}}
+        balance_data = {'2024': {'total_equity': 100}}
+        fnguide_ratios = {'roe': None, 'roa': None}
+
+        result = _calculate_ratios(income_data, balance_data, fnguide_ratios)
+
+        assert result['roe'] == 10.0
+        assert result['roe_source'] == "calculated"

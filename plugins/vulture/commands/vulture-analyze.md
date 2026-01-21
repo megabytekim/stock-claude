@@ -44,7 +44,7 @@ This command performs comprehensive stock analysis by **orchestrating MI/SI/TI/F
     |
     +-> STEP 1: Integrate results + Strategic analysis
     +-> STEP 2: Generate report
-    +-> STEP 3: Save to watchlist/stocks/{종목명}_{종목코드}/analysis.md
+    +-> STEP 3: Save to watchlist/stocks/{종목명}_{종목코드}.md
 ```
 
 ## Worker Role Division
@@ -100,12 +100,11 @@ This command performs comprehensive stock analysis by **orchestrating MI/SI/TI/F
 # Analysis results are saved to watchlist directory at repository root
 OUTPUT_DIR = "watchlist/stocks"
 
-# Folder naming: {종목명}_{종목코드}
-# File naming: analysis.md
+# File naming: {종목명}_{종목코드}.md (단일 파일, 폴더 없음)
 
 # Examples:
-# Korean: f"{OUTPUT_DIR}/삼성전자_005930/analysis.md"
-# US: f"{OUTPUT_DIR}/NVIDIA_NVDA/analysis.md"
+# Korean: f"{OUTPUT_DIR}/삼성전자_005930.md"
+# US: f"{OUTPUT_DIR}/NVIDIA_NVDA.md"
 ```
 
 ---
@@ -257,11 +256,11 @@ After workers complete, main context performs strategic analysis using sector kn
 
 ```python
 OUTPUT_DIR = "watchlist/stocks"
-folder_name = f"{company_name}_{ticker}"  # 예: 삼성전자_005930, NVIDIA_NVDA
-output_file = f"{OUTPUT_DIR}/{folder_name}/analysis.md"
+file_name = f"{company_name}_{ticker}.md"  # 예: 삼성전자_005930.md, NVIDIA_NVDA.md
+output_file = f"{OUTPUT_DIR}/{file_name}"
 
-# STEP 1: 디렉토리 생성
-mkdir -p {OUTPUT_DIR}/{folder_name}
+# STEP 1: 디렉토리 확인 (폴더 생성 불필요, watchlist/stocks만 있으면 됨)
+mkdir -p {OUTPUT_DIR}
 
 # STEP 2: 기존 파일 확인 및 읽기
 existing_content = ""
@@ -286,8 +285,8 @@ final_content = new_analysis + existing_content
 Write(output_file, final_content)
 
 # 결과 예시:
-# watchlist/stocks/삼성전자_005930/analysis.md
-# watchlist/stocks/NVIDIA_NVDA/analysis.md
+# watchlist/stocks/삼성전자_005930.md
+# watchlist/stocks/NVIDIA_NVDA.md
 ```
 
 **APPEND 규칙:**
@@ -570,8 +569,7 @@ When this command is invoked:
 2. **Main context** dispatches MI + SI + TI + FI workers in parallel
 3. **Main context** waits for results and integrates
 4. **Main context** applies sector knowledge for strategic analysis
-5. **Main context** creates `watchlist/stocks/{종목명}_{종목코드}/` folder
-6. **Main context** generates report and **APPENDS** to `analysis.md`
+5. **Main context** generates report and **PREPENDS** to `watchlist/stocks/{종목명}_{종목코드}.md`
 
 ```
 Analyzing: {{ticker}}
