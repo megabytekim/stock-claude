@@ -11,6 +11,7 @@ import pytest
 from utils.financial_scraper import (
     get_financial_data,
     get_fnguide_financial,
+    get_fnguide_ratios,
     get_naver_financial,
     calculate_peg,
     print_fi_report,
@@ -575,3 +576,73 @@ class TestExtractCompanyName:
         result = _extract_company_name(soup)
 
         assert result is None
+
+
+class TestGetFnguideRatios:
+    """get_fnguide_ratios 함수 테스트 (재무비율 페이지)"""
+
+    @patch('utils.financial_scraper.requests.get')
+    def test_returns_dict_on_success(self, mock_get, sample_ticker_kr):
+        """성공 시 dict 반환"""
+        mock_response = Mock()
+        mock_response.text = load_fixture("fnguide_ratio_page.html")
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        result = get_fnguide_ratios(sample_ticker_kr)
+
+        assert isinstance(result, dict)
+
+    @patch('utils.financial_scraper.requests.get')
+    def test_has_roe_and_roa(self, mock_get, sample_ticker_kr):
+        """ROE, ROA 값 존재 확인"""
+        mock_response = Mock()
+        mock_response.text = load_fixture("fnguide_ratio_page.html")
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        result = get_fnguide_ratios(sample_ticker_kr)
+
+        assert result is not None
+        assert 'roe' in result
+        assert 'roa' in result
+        # 2024년 기준 ROE=9.01, ROA=7.12
+        assert result['roe'] == 9.01
+        assert result['roa'] == 7.12
+
+    @patch('utils.financial_scraper.requests.get')
+    def test_has_per_and_pbr(self, mock_get, sample_ticker_kr):
+        """PER, PBR 값 존재 확인"""
+        mock_response = Mock()
+        mock_response.text = load_fixture("fnguide_ratio_page.html")
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        result = get_fnguide_ratios(sample_ticker_kr)
+
+        assert result is not None
+        assert 'per' in result
+        assert 'pbr' in result
+
+    @patch('utils.financial_scraper.requests.get')
+    def test_returns_none_on_network_error(self, mock_get, sample_ticker_kr):
+        """네트워크 에러 시 None 반환"""
+        mock_get.side_effect = Exception("Network error")
+
+        result = get_fnguide_ratios(sample_ticker_kr, retry=0)
+
+        assert result is None
+
+    @patch('utils.financial_scraper.requests.get')
+    def test_uses_correct_url(self, mock_get, sample_ticker_kr):
+        """올바른 URL 사용 확인"""
+        mock_response = Mock()
+        mock_response.text = load_fixture("fnguide_ratio_page.html")
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        get_fnguide_ratios("048910")
+
+        call_args = mock_get.call_args
+        assert "SVD_FinanceRatio.asp" in call_args[0][0]
+        assert "A048910" in call_args[0][0]

@@ -11,9 +11,25 @@ from bs4 import BeautifulSoup
 
 # FnGuide 테이블 ID
 FNGUIDE_URL = "https://comp.fnguide.com/SVO2/ASP/SVD_Finance.asp"
+FNGUIDE_RATIO_URL = "https://comp.fnguide.com/SVO2/ASP/SVD_FinanceRatio.asp"
 FNGUIDE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     "Referer": "https://comp.fnguide.com/",
+}
+
+# 재무비율 메트릭 매핑
+PROFITABILITY_METRICS = {
+    "ROE": "roe",
+    "ROA": "roa",
+    "영업이익률": "operating_margin",
+    "EBITDA마진율": "ebitda_margin",
+}
+
+VALUATION_METRICS = {
+    "PER": "per",
+    "PBR": "pbr",
+    "PSR": "psr",
+    "EV/EBITDA": "ev_ebitda",
 }
 
 # 테이블 ID → 재무제표 유형 매핑
@@ -361,6 +377,160 @@ def get_fnguide_financial(ticker: str, retry: int = 2) -> Optional[dict]:
             return None
 
     return None
+
+
+def get_fnguide_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
+    """FnGuide 재무비율 페이지에서 ROE, ROA, PER, PBR 스크래핑
+
+    Args:
+        ticker: 종목코드 (예: "005930")
+        retry: 실패 시 재시도 횟수
+
+    Returns:
+        {
+            "source": "FnGuide FinanceRatio",
+            "ticker": "005930",
+            "period": "2024/12",
+            "roe": 9.01,
+            "roa": 7.12,
+            "per": 29.34,
+            "pbr": 2.51,
+            "operating_margin": 10.87,
+            "annual": {
+                "2024": {"roe": 9.01, "roa": 7.12, "per": 29.34, "pbr": 2.51},
+                "2023": {"roe": 3.84, "roa": 2.98, ...},
+                ...
+            }
+        }
+        or None (실패 시)
+    """
+    url = f"{FNGUIDE_RATIO_URL}?pGB=1&gicode=A{ticker}"
+
+    for attempt in range(retry + 1):
+        try:
+            response = requests.get(url, headers=FNGUIDE_HEADERS, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            result = {
+                "source": "FnGuide FinanceRatio",
+                "ticker": ticker,
+                "period": None,
+                "annual": {},
+            }
+
+            # 수익성 지표 파싱 (ROE, ROA)
+            profit_data = _parse_fnguide_ratio_table(soup, "divProfitRatio", PROFITABILITY_METRICS)
+            if profit_data:
+                for year, metrics in profit_data.items():
+                    if year not in result["annual"]:
+                        result["annual"][year] = {}
+                    result["annual"][year].update(metrics)
+
+            # 밸류에이션 지표 파싱 (PER, PBR)
+            value_data = _parse_fnguide_ratio_table(soup, "divValueRatio", VALUATION_METRICS)
+            if value_data:
+                for year, metrics in value_data.items():
+                    if year not in result["annual"]:
+                        result["annual"][year] = {}
+                    result["annual"][year].update(metrics)
+
+            if not result["annual"]:
+                raise ValueError("Failed to parse ratio data")
+
+            # 최신 연도 데이터 추출
+            years = sorted(result["annual"].keys(), reverse=True)
+            if years:
+                latest_year = years[0]
+                result["period"] = f"{latest_year}/12"
+                latest = result["annual"][latest_year]
+                result["roe"] = latest.get("roe")
+                result["roa"] = latest.get("roa")
+                result["per"] = latest.get("per")
+                result["pbr"] = latest.get("pbr")
+                result["operating_margin"] = latest.get("operating_margin")
+
+            return result
+
+        except Exception as e:
+            if attempt < retry:
+                time.sleep(1)
+                continue
+            return None
+
+    return None
+
+
+def _parse_fnguide_ratio_table(soup: BeautifulSoup, div_id: str, metrics: dict) -> Optional[dict]:
+    """FnGuide 재무비율 테이블 파싱
+
+    Args:
+        soup: BeautifulSoup 객체
+        div_id: 테이블 div ID (예: "divProfitRatio")
+        metrics: 한글→영문 메트릭 매핑
+
+    Returns:
+        {
+            "2024": {"roe": 9.01, "roa": 7.12},
+            "2023": {"roe": 3.84, "roa": 2.98},
+            ...
+        }
+    """
+    div_elem = soup.find("div", id=div_id)
+    if not div_elem:
+        return None
+
+    table = div_elem.find("table")
+    if not table:
+        return None
+
+    # 헤더에서 기간 추출
+    headers = []
+    thead = table.find("thead")
+    if thead:
+        for th in thead.find_all("th"):
+            text = th.text.strip()
+            if text:
+                headers.append(text)
+
+    if len(headers) < 2:
+        return None
+
+    # 기간 컬럼 추출 (YYYY/MM 형식 → YYYY 키)
+    periods = []
+    for h in headers[1:]:
+        match = re.match(r"(\d{4})/(\d{2})", h)
+        if match:
+            periods.append(match.group(1))
+        else:
+            periods.append(None)
+
+    # 데이터 행 파싱
+    result = {p: {} for p in periods if p}
+    tbody = table.find("tbody")
+    if not tbody:
+        return None
+
+    for tr in tbody.find_all("tr"):
+        cells = tr.find_all(["th", "td"])
+        if len(cells) < 2:
+            continue
+
+        # 행 이름 (첫 번째 셀)
+        row_name = cells[0].text.strip()
+        eng_key = metrics.get(row_name)
+        if not eng_key:
+            continue
+
+        # 값 추출
+        for i, cell in enumerate(cells[1:]):
+            if i >= len(periods) or not periods[i]:
+                continue
+            value = _parse_fnguide_number(cell.text.strip())
+            if value is not None:
+                result[periods[i]][eng_key] = value
+
+    return {k: v for k, v in result.items() if v} or None
 
 
 def get_naver_financial(ticker: str) -> Optional[dict]:
