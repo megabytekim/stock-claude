@@ -97,6 +97,7 @@ def get_ti_full_analysis(ticker: str) -> dict:
             "volume": naver_info.get("volume"),
             "market_cap": naver_info.get("market_cap"),
             "per": naver_info.get("per"),
+            "estimated_per": naver_info.get("estimated_per"),
             "pbr": naver_info.get("pbr"),
             "foreign_ratio": naver_info.get("foreign_ratio"),
         }
@@ -237,7 +238,9 @@ def print_ti_report(ticker: str) -> None:
         if price.get('market_cap'):
             print(f"시가총액: {price.get('market_cap')}")
         if price.get('per'):
-            print(f"PER: {price.get('per')}")
+            print(f"PER: {price.get('per')} (TTM)")
+        if price.get('estimated_per'):
+            print(f"추정PER: {price.get('estimated_per')} (Forward)")
         if price.get('pbr'):
             print(f"PBR: {price.get('pbr')}")
         if price.get('foreign_ratio'):

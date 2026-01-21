@@ -108,9 +108,14 @@ def get_naver_stock_info(ticker: str) -> Optional[dict]:
 
                     if label == "시가총액":  # 정확 매칭 (시가총액순위와 구분)
                         result["market_cap"] = _parse_market_cap(value_text)
-                    elif label == "PER":  # 정확 매칭 (동일업종 PER과 구분)
+                    elif label.startswith("PERl") or label.startswith("PER|"):
+                        # "PERlEPS(2025.09)" 형태 - 동일업종 PER 제외
                         result["per"] = _parse_float(value_text)
-                    elif label == "PBR":  # 정확 매칭 (동일업종 PBR과 구분)
+                    elif label.startswith("추정PER"):
+                        # "추정PERlEPS" 형태
+                        result["estimated_per"] = _parse_float(value_text)
+                    elif label.startswith("PBRl") or label.startswith("PBR|"):
+                        # "PBRlBPS (2025.09)" 형태
                         result["pbr"] = _parse_float(value_text)
                     elif "외국인" in label:
                         result["foreign_ratio"] = _parse_float(value_text.replace("%", ""))

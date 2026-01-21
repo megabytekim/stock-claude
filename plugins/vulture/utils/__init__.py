@@ -38,6 +38,7 @@ from utils.ti_analyzer import (
 from utils.financial_scraper import (
     get_financial_data,
     get_fnguide_financial,
+    get_fnguide_snapshot_ratios,
     get_naver_financial,
     print_fi_report,
     calculate_peg,
@@ -73,6 +74,7 @@ __all__ = [
     # financial_scraper
     'get_financial_data',
     'get_fnguide_financial',
+    'get_fnguide_snapshot_ratios',
     'get_naver_financial',
     'print_fi_report',
     'calculate_peg',

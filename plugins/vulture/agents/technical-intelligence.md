@@ -30,7 +30,16 @@ You perform technical analysis AND collect all numerical data when called by the
 2. **시가총액**: pykrx 또는 Naver Finance
 3. **52주 고저**: pykrx 기반 정확한 계산
 4. **거래량**: 일간 거래량
-5. **밸류에이션**: PER, PBR, 외국인비율 (Naver Finance)
+5. **밸류에이션** (Naver Finance):
+   - PER (TTM, 과거 4분기 기준)
+   - **추정PER** (Forward, 컨센서스 기준) - 실질적 밸류에이션
+   - PBR
+   - 외국인비율
+
+**PER vs 추정PER 차이:**
+- PER 31 = 과거 실적 기준 (2023년 적자 반영)
+- 추정PER 10 = 미래 실적 기준 (2026년 이익 급증 반영)
+- **투자 판단에는 추정PER이 더 유의미**
 
 ### 기술적 분석
 6. **기술지표 계산**: RSI, MACD, 볼린저, 스토캐스틱
@@ -95,7 +104,10 @@ EOF
     "price_info": {
         "price", "change", "change_pct",
         "open", "high", "low", "volume",
-        "market_cap", "per", "pbr", "foreign_ratio"
+        "market_cap",
+        "per",              # PER (TTM, 과거 기준)
+        "estimated_per",    # 추정PER (Forward, 컨센서스 기준)
+        "pbr", "foreign_ratio"
     },
     "week52": {"high", "high_date", "low", "low_date", "position_pct"},
     "indicators": {
@@ -175,11 +187,12 @@ EOF
 | 현재 위치 | XX.X% | - |
 
 ### 밸류에이션
-| 지표 | 값 | 출처 |
-|------|-----|------|
-| PER | XX.Xx | Naver Finance |
-| PBR | X.XXx | Naver Finance |
-| 외국인비율 | XX.XX% | Naver Finance |
+| 지표 | 값 | 출처 | 비고 |
+|------|-----|------|------|
+| PER | XX.Xx | Naver Finance | TTM (과거 기준) |
+| **추정PER** | XX.Xx | Naver Finance | Forward (컨센서스) |
+| PBR | X.XXx | Naver Finance | |
+| 외국인비율 | XX.XX% | Naver Finance | |
 
 ---
 

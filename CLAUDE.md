@@ -25,6 +25,7 @@ claude plugin uninstall vulture@stock-claude
 claude plugin install vulture@stock-claude --scope user
 claude plugin list | grep -A 3 vulture  # 버전 확인
 ```
+**참고: 재설치 후 Claude Code를 껐다가 다시 켜야 적용됩니다.**
 
 ## 4. 캐시 문제 시
 GitHub에는 새 버전이 있지만 구버전이 설치되는 경우:

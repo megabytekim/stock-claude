@@ -775,6 +775,167 @@ def print_fi_report(ticker: str) -> None:
     print("=" * 60)
 
 
+def get_fnguide_snapshot_ratios(ticker: str, retry: int = 1) -> Optional[dict]:
+    """FnGuide Snapshot 페이지(SVD_Main.asp)에서 ROE, EV/EBITDA 스크래핑
+
+    SVD_FinanceRatio.asp는 JS 동적 로드라 requests로 안 됨.
+    SVD_Main.asp는 서버사이드 렌더링이라 requests로 가능.
+
+    Args:
+        ticker: 종목코드 (예: "005930")
+        retry: 실패 시 재시도 횟수
+
+    Returns:
+        {
+            "source": "FnGuide Snapshot",
+            "ticker": "005930",
+            "roe": 9.03,
+            "roe_period": "2024/12",
+            "ev_ebitda": 8.35,
+            "ev_ebitda_period": "2024/12",
+        }
+        or None (실패 시)
+    """
+    url = f"https://comp.fnguide.com/SVO2/ASP/SVD_Main.asp?pGB=1&gicode=A{ticker}&cID=&MenuYn=Y"
+
+    for attempt in range(retry + 1):
+        try:
+            response = requests.get(url, headers=FNGUIDE_HEADERS, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            result = {
+                "source": "FnGuide Snapshot",
+                "ticker": ticker,
+                "roe": None,
+                "roe_period": None,
+                "ev_ebitda": None,
+                "ev_ebitda_period": None,
+            }
+
+            # IFRS(연결) Annual 테이블에서 최신 연도 데이터 찾기
+            for table in soup.find_all("table"):
+                # 테이블 헤더 확인
+                thead = table.find("thead")
+                if not thead:
+                    continue
+
+                headers = [th.get_text(strip=True) for th in thead.find_all("th")]
+
+                # IFRS(연결) Annual 테이블인지 확인
+                if not headers or "IFRS(연결)" not in headers[0]:
+                    continue
+                if "Annual" not in headers:
+                    continue
+
+                # 연도 컬럼 인덱스 찾기 (YYYY/12 형식, 잠정실적 제외)
+                year_indices = {}
+                first_year_header_idx = None
+                for i, h in enumerate(headers):
+                    # 잠정실적(P) 제외, 확정 연간 데이터만
+                    match = re.match(r"^(\d{4})/12$", h)
+                    if match:
+                        if first_year_header_idx is None:
+                            first_year_header_idx = i
+                        year_indices[int(match.group(1))] = i
+
+                if not year_indices or first_year_header_idx is None:
+                    continue
+
+                # 최신 연도 찾기
+                latest_year = max(year_indices.keys())
+                latest_header_idx = year_indices[latest_year]
+
+                # 데이터 행에서 ROE, EV/EBITDA 찾기
+                for row in table.find_all("tr"):
+                    ths = row.find_all("th")
+                    tds = row.find_all("td")
+
+                    if not ths or not tds:
+                        continue
+
+                    th_text = ths[0].get_text(strip=True)
+
+                    # ROE
+                    if result["roe"] is None and "ROE" in th_text and "%" in th_text:
+                        # td 인덱스 = header 인덱스 - 첫 번째 연도 헤더 인덱스
+                        # (IFRS(연결), Annual, Net Quarter 등 비연도 컬럼 제외)
+                        td_idx = latest_header_idx - first_year_header_idx
+                        if 0 <= td_idx < len(tds):
+                            val_text = tds[td_idx].get_text(strip=True)
+                            if val_text and val_text not in ["", "-"]:
+                                try:
+                                    result["roe"] = float(val_text.replace(",", ""))
+                                    result["roe_period"] = f"{latest_year}/12"
+                                except ValueError:
+                                    pass
+
+                    # EV/EBITDA
+                    if result["ev_ebitda"] is None and "EV/EBITDA" in th_text:
+                        td_idx = latest_header_idx - first_year_header_idx
+                        if 0 <= td_idx < len(tds):
+                            val_text = tds[td_idx].get_text(strip=True)
+                            if val_text and val_text not in ["", "-"]:
+                                try:
+                                    result["ev_ebitda"] = float(val_text.replace(",", ""))
+                                    result["ev_ebitda_period"] = f"{latest_year}/12"
+                                except ValueError:
+                                    pass
+
+                # 첫 번째 IFRS(연결) Annual 테이블에서 ROE 찾으면 종료
+                if result["roe"] is not None:
+                    break
+
+            # EV/EBITDA는 별도 테이블에서 찾기 (구분, 삼성전자, 코스피... 형태)
+            if result["ev_ebitda"] is None:
+                for table in soup.find_all("table"):
+                    thead = table.find("thead")
+                    if not thead:
+                        continue
+
+                    headers = [th.get_text(strip=True) for th in thead.find_all("th")]
+                    # "구분" 컬럼이 있고, 종목명이 두 번째 컬럼인 테이블
+                    if not headers or headers[0] != "구분":
+                        continue
+
+                    for row in table.find_all("tr"):
+                        ths = row.find_all("th")
+                        tds = row.find_all("td")
+
+                        if not ths or not tds:
+                            continue
+
+                        th_text = ths[0].get_text(strip=True)
+
+                        if "EV/EBITDA" in th_text:
+                            # 첫 번째 td가 해당 종목의 EV/EBITDA
+                            val_text = tds[0].get_text(strip=True)
+                            if val_text and val_text not in ["", "-"]:
+                                try:
+                                    result["ev_ebitda"] = float(val_text.replace(",", ""))
+                                    result["ev_ebitda_period"] = "latest"
+                                except ValueError:
+                                    pass
+                            break
+
+                    if result["ev_ebitda"] is not None:
+                        break
+
+            # 하나라도 찾았으면 반환
+            if result["roe"] is not None or result["ev_ebitda"] is not None:
+                return result
+
+            raise ValueError("Failed to find ROE or EV/EBITDA")
+
+        except Exception:
+            if attempt < retry:
+                time.sleep(1)
+                continue
+            return None
+
+    return None
+
+
 if __name__ == "__main__":
     import sys
     ticker = sys.argv[1] if len(sys.argv) > 1 else "005930"
