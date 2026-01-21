@@ -2,12 +2,15 @@
   "name": "stock-claude",
   "version": "1.0.0",
   "description": "US/Korea 주식 시장 분석 플러그인 모음",
-  "author": {
+  "owner": {
     "name": "Michael"
   },
   "keywords": ["stock", "korea", "kospi", "kosdaq", "us", "finance"],
   "license": "MIT",
   "plugins": [
-    "plugins/vulture"
+    {
+      "name": "vulture",
+      "path": "plugins/vulture"
+    }
   ]
 }
