@@ -261,7 +261,8 @@ output_file = f"{OUTPUT_DIR}/{file_name}"
 mkdir -p {OUTPUT_DIR}
 
 # STEP 2: 새 분석을 임시 파일에 저장 (Write 도구 사용)
-temp_file = "/tmp/vulture_new_analysis.md"
+# 병렬 실행 시 충돌 방지를 위해 ticker별 고유 파일명 사용
+temp_file = f"/tmp/vulture_{ticker}.md"
 new_analysis = f"""
 # {company_name} ({ticker}) 분석
 
@@ -277,8 +278,8 @@ Write(temp_file, new_analysis)
 # 기존 파일이 없으면 새 분석만 저장, 있으면 prepend
 Bash(f"""
 if [ -f "{output_file}" ]; then
-    cat {temp_file} {output_file} > /tmp/vulture_merged.md
-    mv /tmp/vulture_merged.md {output_file}
+    cat {temp_file} {output_file} > /tmp/vulture_merged_{ticker}.md
+    mv /tmp/vulture_merged_{ticker}.md {output_file}
 else
     mv {temp_file} {output_file}
 fi

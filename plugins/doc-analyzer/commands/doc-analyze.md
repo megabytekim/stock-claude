@@ -96,54 +96,87 @@ for chunk_file in sorted(glob(f"{TEMP_DIR}/chunks/*.txt")):
 #   - Supply chain (suppliers, customers)
 #   - Indirect beneficiaries (infrastructure, services)
 
-# 4. Save discovered stocks to queue
+# 4. Categorize stocks by theme (based on document trends)
+# Group stocks by their primary relevance theme:
+#   - Use short, descriptive theme names (e.g., "AI_Semiconductor", "Energy", "Biotech")
+#   - Use underscores instead of spaces for folder compatibility
+#   - Each stock should have exactly one theme assignment
+
+# 5. Save discovered stocks to queue WITH theme
 queue = {
     "doc_name": doc_name,
-    "discovered": ["SK하이닉스", "삼성전자", "한미반도체", ...],
+    "trends": ["Trend 1", "Trend 2", ...],  # Key trends from document
+    "discovered": [
+        {"name": "SK하이닉스", "ticker": "000660", "relevance": "HBM AI 반도체", "theme": "AI_Semiconductor"},
+        {"name": "한화솔루션", "ticker": "009830", "relevance": "태양광, 배터리", "theme": "Energy"},
+        ...
+    ],
     "completed": [],
     "current": null
 }
 Write(f"{TEMP_DIR}/queue.json", json.dumps(queue))
 ```
 
-### STEP 3: Profile Each Stock
+### STEP 3: Profile Each Stock (Parallel Batch Processing)
 
-**CRITICAL: Use queue file to track progress. Do not rely on memory.**
+**CRITICAL: Process in parallel batches, then verify outputs to update queue.**
 
 ```python
+BATCH_SIZE = 3  # Limit concurrent agents to avoid resource exhaustion
+
 # 1. Read current queue
 queue = json.loads(Read(f"{TEMP_DIR}/queue.json"))
 
-# 2. Process each pending stock
-for stock_name in queue["discovered"]:
-    if stock_name in queue["completed"]:
-        continue
+# 2. Filter pending stocks (not yet completed)
+pending = [s for s in queue["discovered"] if s["name"] not in queue["completed"]]
 
-    # Update queue: mark as current
-    queue["current"] = stock_name
+# 3. Process in batches
+for i in range(0, len(pending), BATCH_SIZE):
+    batch = pending[i:i+BATCH_SIZE]
+
+    # Update queue: mark batch as in_progress
+    queue["current"] = [s["name"] for s in batch]
     Write(f"{TEMP_DIR}/queue.json", json.dumps(queue))
 
-    # 3. Call stock-profiler agent
-    Task(
-        subagent_type="doc-analyzer:stock-profiler",
-        prompt=f"""
-        Generate brief profile for: {stock_name}
+    # 4. Launch ALL agents in this batch IN PARALLEL (single message, multiple Task calls)
+    # IMPORTANT: Make all Task() calls in ONE response to run them in parallel
+    for stock_info in batch:
+        Task(
+            subagent_type="doc-analyzer:stock-profiler",
+            prompt=f"""
+            Generate brief profile for: {stock_info["name"]}
 
-        Context from document:
-        - Document: {doc_name}
-        - Key trends: [summarized trends from STEP 2]
-        - Relevance: [why this stock relates to the trends]
+            Context from document:
+            - Document: {doc_name}
+            - Key trends: [summarized trends from STEP 2]
+            - Relevance: {stock_info["relevance"]}
+            - Theme: {stock_info["theme"]}
 
-        Output file: {OUTPUT_DIR}/stocks/
-        """,
-        description=f"Profile: {stock_name}"
-    )
+            Output directory: {OUTPUT_DIR}/stocks/
+            Theme folder: {stock_info["theme"]}
 
-    # 4. Update queue: mark as completed
-    queue["completed"].append(stock_name)
+            IMPORTANT: Create theme folder if it doesn't exist, then save profile there.
+            File naming: {stock_info["name"]}_{stock_info["ticker"]}.md
+            """,
+            description=f"Profile: {stock_info['name']}"
+        )
+
+    # 5. AFTER batch completes, verify which profiles were created
+    # Check file existence to confirm success (more reliable than Task status)
+    for stock_info in batch:
+        expected_file = f"{OUTPUT_DIR}/stocks/{stock_info['theme']}/{stock_info['name']}_{stock_info['ticker']}.md"
+        if Glob(expected_file):  # File exists
+            queue["completed"].append(stock_info["name"])
+
+    # 6. Update queue after batch
     queue["current"] = null
     Write(f"{TEMP_DIR}/queue.json", json.dumps(queue))
+
+    # Log progress
+    print(f"Batch {i//BATCH_SIZE + 1} complete: {len(queue['completed'])}/{len(queue['discovered'])} stocks profiled")
 ```
+
+**Resume capability**: Re-running the command will skip already-completed stocks (checked via queue.json).
 
 ### STEP 4: Generate Final Report
 
@@ -171,10 +204,18 @@ summary = f"""
 
 ## 관련 종목 ({len(discovered)} 종목)
 
+### AI_Semiconductor
 | 종목명 | 티커 | 관련성 | 프로필 |
 |--------|------|--------|--------|
-| SK하이닉스 | 000660 | HBM 수혜 | [링크](stocks/SK하이닉스_000660.md) |
-| ... | ... | ... | ... |
+| SK하이닉스 | 000660 | HBM AI 반도체 | [링크](stocks/AI_Semiconductor/SK하이닉스_000660.md) |
+| 삼성전자 | 005930 | AI 반도체, HBM | [링크](stocks/AI_Semiconductor/삼성전자_005930.md) |
+
+### Energy
+| 종목명 | 티커 | 관련성 | 프로필 |
+|--------|------|--------|--------|
+| 한화솔루션 | 009830 | 태양광, 배터리 | [링크](stocks/Energy/한화솔루션_009830.md) |
+
+... (group stocks by theme)
 
 ---
 

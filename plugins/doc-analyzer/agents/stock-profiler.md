@@ -34,6 +34,7 @@ You receive:
 3. **trends**: Key trends from the document
 4. **relevance**: Why this stock relates to the document
 5. **output_dir**: Where to save the profile
+6. **theme**: Theme folder name (e.g., "AI_Semiconductor", "Energy")
 
 ## Execution Flow
 
@@ -130,8 +131,13 @@ After receiving FI and MI results, generate the profile:
 ### STEP 4: Save Profile
 
 ```python
+# 1. Create theme folder if it doesn't exist
+theme_dir = f"{output_dir}/{theme}"
+Bash(f"mkdir -p {theme_dir}")
+
+# 2. Save profile in theme folder
 # File naming: {회사명}_{티커}.md
-output_file = f"{output_dir}/{stock_name}_{ticker}.md"
+output_file = f"{theme_dir}/{stock_name}_{ticker}.md"
 Write(output_file, profile_content)
 ```
 
