@@ -11,6 +11,10 @@
     {
       "name": "vulture",
       "source": "./plugins/vulture"
+    },
+    {
+      "name": "doc-analyzer",
+      "source": "./plugins/doc-analyzer"
     }
   ]
 }
