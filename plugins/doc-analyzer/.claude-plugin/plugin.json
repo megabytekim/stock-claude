@@ -1,6 +1,6 @@
 {
   "name": "doc-analyzer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Industry document analyzer - processes PDF reports to discover and profile related Korean stocks",
   "author": {
     "name": "Michael"
