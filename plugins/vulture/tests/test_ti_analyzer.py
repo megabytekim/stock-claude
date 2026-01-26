@@ -383,3 +383,111 @@ class TestPrintTiReport:
         captured = capsys.readouterr()
         assert 'TI Report' in captured.out
         assert '조회 실패' in captured.out
+
+    def test_outputs_formatted_market_cap(self, sample_ticker_kr, sample_ohlcv_df, capsys):
+        """print_ti_report should output formatted market cap with 조 notation."""
+        from utils.ti_analyzer import print_ti_report
+
+        with patch('utils.ti_analyzer.get_ohlcv') as mock_ohlcv, \
+             patch('utils.ti_analyzer.get_naver_stock_info') as mock_naver, \
+             patch('utils.ti_analyzer.get_ticker_name') as mock_name:
+            mock_ohlcv.return_value = sample_ohlcv_df
+            mock_naver.return_value = {
+                'name': '로보티즈',
+                'price': 280500,
+                'change': 32000,
+                'change_pct': 12.88,
+                'market_cap': 40869,  # 억 단위 정수
+            }
+            mock_name.return_value = '로보티즈'
+
+            print_ti_report(sample_ticker_kr)
+
+        captured = capsys.readouterr()
+        # 시가총액이 조 단위로 포맷되어야 함
+        assert '4조' in captured.out
+        assert '869억원' in captured.out
+        assert '4.09조' in captured.out
+
+
+class TestFormatMarketCap:
+    """Tests for market cap formatting function."""
+
+    def test_format_trillion_scale(self):
+        """40869억 should format as '4조 869억원 (4.09조)'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(40869)
+
+        assert "4조" in result
+        assert "869억원" in result
+        assert "4.09조" in result
+
+    def test_format_sub_trillion(self):
+        """4086억 should format as '4,086억원 (0.41조)'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(4086)
+
+        assert "4,086억원" in result
+        assert "0.41조" in result
+        assert "조 " not in result.split("(")[0]  # 조 단위 없이 억만 표시
+
+    def test_format_large_trillion(self):
+        """3280000억 should format as '328조 0억원 (328.00조)'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(3280000)
+
+        assert "328조" in result
+        assert "328.00조" in result
+
+    def test_format_with_comma_in_eok(self):
+        """89014억 should have comma in 억 part: '8조 9,014억원'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(89014)
+
+        assert "8조" in result
+        assert "9,014억원" in result
+
+    def test_format_zero(self):
+        """0 should format gracefully."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(0)
+
+        assert "0억원" in result
+
+    def test_format_none_returns_dash(self):
+        """None should return '-'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(None)
+
+        assert result == "-"
+
+    def test_format_small_value(self):
+        """500억 should format as '500억원 (0.05조)'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap(500)
+
+        assert "500억원" in result
+        assert "0.05조" in result
+
+    def test_format_string_input_returns_as_is(self):
+        """String input like '328조' should be returned as-is."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap("328조")
+
+        assert result == "328조"
+
+    def test_format_invalid_input_returns_dash(self):
+        """Invalid input should return '-'."""
+        from utils.ti_analyzer import format_market_cap
+
+        result = format_market_cap("invalid")
+
+        assert result == "-"

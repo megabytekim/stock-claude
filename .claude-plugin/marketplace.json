@@ -1,6 +1,6 @@
 {
   "name": "stock-claude",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "US/Korea 주식 시장 분석 플러그인 모음",
   "owner": {
     "name": "Michael"

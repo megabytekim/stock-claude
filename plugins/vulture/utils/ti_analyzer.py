@@ -11,6 +11,37 @@ from utils.indicators import sma, ema, rsi, macd, bollinger, stochastic, support
 from utils.web_scraper import get_naver_stock_info
 
 
+def format_market_cap(market_cap_eok) -> str:
+    """시가총액을 읽기 쉬운 형식으로 포맷
+
+    Args:
+        market_cap_eok: 시가총액 (억원 단위 정수, 또는 이미 포맷된 문자열)
+
+    Returns:
+        포맷된 문자열 (예: "4조 869억원 (4.09조)")
+    """
+    if market_cap_eok is None:
+        return "-"
+
+    # 이미 문자열인 경우 (조/억 포함): 그대로 반환
+    if isinstance(market_cap_eok, str):
+        if "조" in market_cap_eok or "억" in market_cap_eok:
+            return market_cap_eok
+        return "-"
+
+    if market_cap_eok == 0:
+        return "0억원 (0.00조)"
+
+    jo = market_cap_eok // 10000  # 조 단위
+    eok = market_cap_eok % 10000  # 억 단위 (나머지)
+    total_jo = market_cap_eok / 10000  # 총 조 단위 (소수점)
+
+    if jo > 0:
+        return f"{jo}조 {eok:,}억원 ({total_jo:.2f}조)"
+    else:
+        return f"{market_cap_eok:,}억원 ({total_jo:.2f}조)"
+
+
 def get_rsi_signal(rsi_value: float) -> str:
     """RSI 값으로 신호 판단
 
@@ -236,7 +267,7 @@ def print_ti_report(ticker: str) -> None:
         if price.get('volume'):
             print(f"거래량: {price.get('volume'):,}주")
         if price.get('market_cap'):
-            print(f"시가총액: {price.get('market_cap')}")
+            print(f"시가총액: {format_market_cap(price.get('market_cap'))}")
         if price.get('per'):
             print(f"PER: {price.get('per')} (TTM)")
         if price.get('estimated_per'):
