@@ -109,7 +109,7 @@ WebSearch("what is today's date")
 
 ```bash
 # 한국 주식 종토방: Bash + utils 함수 사용 (가장 빠르고 정확)
-cd "$(git rev-parse --show-toplevel)/plugins/vulture" && python3 << 'EOF'
+cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 

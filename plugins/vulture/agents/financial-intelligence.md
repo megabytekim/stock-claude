@@ -63,7 +63,7 @@ FAIL: 모든 방법 실패
 **FnGuide Snapshot 페이지에서 직접 가져오기** (계산하지 않음):
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/plugins/vulture" && python3 << 'EOF'
+cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 
@@ -103,7 +103,7 @@ EOF
 ### STEP 1: 재무제표 리포트 출력
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/plugins/vulture" && python3 << 'EOF'
+cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 
@@ -117,7 +117,7 @@ EOF
 ### STEP 2: dict로 데이터 반환받기 (고급 사용)
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/plugins/vulture" && python3 << 'EOF'
+cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 

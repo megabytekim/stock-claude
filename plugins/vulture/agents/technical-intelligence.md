@@ -62,7 +62,7 @@ You perform technical analysis AND collect all numerical data when called by the
 ### STEP 1: 통합 분석 실행 (간결화된 버전)
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/plugins/vulture" && python3 << 'EOF'
+cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 
@@ -76,7 +76,7 @@ EOF
 ### STEP 2: dict로 데이터 반환받기 (고급 사용)
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/plugins/vulture" && python3 << 'EOF'
+cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 
