@@ -62,7 +62,7 @@ You perform technical analysis AND collect all numerical data when called by the
 ### STEP 1: 통합 분석 실행 (간결화된 버전)
 
 ```bash
-cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
+cd ~/.claude/plugins/cache/stock-claude/vulture/$(ls ~/.claude/plugins/cache/stock-claude/vulture/ | sort -V | tail -1) && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 
@@ -76,7 +76,7 @@ EOF
 ### STEP 2: dict로 데이터 반환받기 (고급 사용)
 
 ```bash
-cd "${CLAUDE_PLUGIN_ROOT}" && python3 << 'EOF'
+cd ~/.claude/plugins/cache/stock-claude/vulture/$(ls ~/.claude/plugins/cache/stock-claude/vulture/ | sort -V | tail -1) && python3 << 'EOF'
 import sys
 sys.path.insert(0, '.')
 
